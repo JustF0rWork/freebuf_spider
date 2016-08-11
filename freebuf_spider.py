@@ -18,11 +18,11 @@ reload(sys)
 sys.setdefaultencoding("utf-8" )
 
 #默认保存文件夹
-FileName = "freebuf"
+FileName = "paper"
 #默认使用30个线程
 ThreadNum  = 30
 #采集网站地址
-SiteUrl = "http://www.freebuf.com/vuls/page"
+SiteUrl = "http://www.freebuf.com/"+FileName+"/page"
 #线程队列
 threads = []
 #总页数
@@ -55,9 +55,10 @@ def get_total_page_number(url):
 
 #所有列表页面URL
 def get_page_list_url(TotalPage):
+    global FileName
     PageListUrls = []
     for i in range(TotalPage):
-        PageListUrls.append("http://www.freebuf.com/vuls/page/%d" % i)
+        PageListUrls.append("http://www.freebuf.com/%s/page/%d" %(FileName,i))
     return PageListUrls
 
 #采集文章链接
@@ -75,9 +76,9 @@ def get_article_url(PageListUrls):
 
 
 #将采集数据缓存本地 \/:*?"><|
-def cache_Articles(url,title, author, content):
+def cache_Articles(url,create_time,title, author, content):
     global FileName
-    filename= title+".html"
+    filename= title+create_time+".html"
 
 #这里替换文章名中一些不能写做文件名的特殊符号
     filename = filename.replace("\\",".")
@@ -98,7 +99,7 @@ def cache_Articles(url,title, author, content):
         fw = open(filename,"w+")
     except Exception,e:
     	#用文章的名字创建文件失败时，使用当前时间创建html文件
-        Fname =FileName+"/"+str(int(time.time()))+".html"
+        Fname =FileName+"/"+str(int(time.time()))+create_time+".html"
         fw = open(Fname,'w+')
     try:
         text = '''
@@ -136,8 +137,12 @@ def get_article_content(PageUrls):
         #获取文章内容
         path_section = re.compile(r"<head>([\w\W]*?)<div class=\"article-oper\">")
         section = path_section.findall(content)
+
+        #time
+        patt_time=re.compile(r"<span class=\"time\">(.*?)</span>")
+        time=patt_time.findall(content)
         #将采集数据缓存本地
-        cache_Articles(url,title[0],author[0],section[0])
+        cache_Articles(url,time[0],title[0],author[0],section[0])
 
 
 def main():
@@ -148,6 +153,14 @@ def main():
     global PageListUrls
     global PageUrls
     global Articles
+    global FileName
+    try:
+        os.makedirs(FileName)
+    except:
+        print u"文件夹已存在！"
+        #FileName = str(int(time.time()))
+        #print u"创建目录"
+        #os.makedirs(FileName)
 
 
 
@@ -155,35 +168,31 @@ def main():
     TotalPage = get_total_page_number( SiteUrl )
 
     #构建列表页面URL
-    PageListUrls = get_page_list_url(TotalPage)
     print "构建列表页面URL..."
+    PageListUrls = get_page_list_url(TotalPage)
+
     #采集文章链接
-    if os.path.exists("cache"):
-        fr=open("cache","r")
+    print "采集文章链接..."
+    if os.path.exists(FileName+"/cache"):
+        fr=open(FileName+"/cache","r")
         PageUrls=fr.read().split(",")
         del PageUrls[-1]
         fr.close()
     else:
-        fw = open("cache","w+")
+        fw = open(FileName+"/cache","w+")
         PageUrls = get_article_url(PageListUrls)
         for i in range(len(PageUrls)):
             fw.write(str(PageUrls[i])+",")
         fw.close()
-    print "采集文章链接..."
+
     #获取每个线程执行条数
     ThreadExceNum = math.ceil( len(PageUrls) / ThreadNum  )
     print  "线程执行条数%d" % ThreadExceNum
     #分组
     PageUrlGroup = []
     #创建目录
-    global FileName
-    try:
-        os.makedirs("freebuf")
-    except:
-        print u"freebuf文件夹创建失败！"
-        FileName = str(int(time.time()))
-        print u"创建目录"
-        os.makedirs(FileName)
+
+
 
     j = 0
 
